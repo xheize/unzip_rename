@@ -21,7 +21,7 @@ def change_compatible_name(path):
                 dst = os.path.join(root, fixed_file_name)
                 os.rename(src=src, dst=dst)
         for dir_name in dirs:
-            _dir_name = dir_name.copy()
+            _dir_name = dir_name
             if not unicodedata.is_normalized('NFC', _dir_name):
                 _dir_name = unicodedata.normalize('NFC', _dir_name)
             if not check_compatible_filename(_dir_name):
@@ -35,7 +35,7 @@ def unzip_file(path):
         for file_name in files:
             src = os.path.join(root, file_name)
             filename, _ext = os.path.splitext(file_name)
-            if _ext == "zip":
+            if _ext == ".zip":
                 extract_dir_name = f"{filename}_tmp"
                 extract_dir_path = os.path.join(root, extract_dir_name)
                 if os.path.exists(extract_dir_path):
@@ -48,7 +48,7 @@ def unzip_file(path):
 
 def bandizip_zip(src_path, dst_file_path):
     try:
-        subprocess.call(f"Bandizip c -y {dst_file_path} {src_path}\\")
+        subprocess.run(f"Bandizip c -y {dst_file_path} {src_path}\\", shell=True, check=True)
         return True
     except Exception as e:
         print(e, src_path, dst_file_path)
@@ -57,7 +57,7 @@ def bandizip_zip(src_path, dst_file_path):
 
 def bandizip_unzip(src_path, dst_path):
     try:
-        subprocess.call(f"Bandizip bx -y -o:{dst_path} {src_path}")
+        subprocess.run(f"Bandizip bx -y -o:{dst_path} {src_path}", shell=True, check=True)
         return True
     except Exception as e:
         print(e, src_path, dst_path)
@@ -92,3 +92,8 @@ def fix_compatible_filename(filename):
 #         string.encode('latin1').decode('euc-kr')
 #     except UnicodeDecodeError:
 #         string.encode('latin1').decode('cp949')
+
+
+if __name__ == "__main__":
+    path = "E:\\webudding_test"
+    recursive_run(path)
