@@ -1,8 +1,13 @@
 import os.path
+import stat
 import unicodedata
 import re
-import subprocess
+# import subprocess
+import shutil
+import datetime
+from multiprocessing import Pool
 
+from bandizip_modules import bandizip_unzip, bandizip_zip
 
 def recursive_run(path):
     change_compatible_name(path)
@@ -39,29 +44,16 @@ def unzip_file(path):
                 extract_dir_name = f"{filename}_tmp"
                 extract_dir_path = os.path.join(root, extract_dir_name)
                 if os.path.exists(extract_dir_path):
-                    FileExistsError("이미 존재하는 tmp 폴더 입니다.")
+                    shutil.rmtree(extract_dir_path, onexc=remove_readonly)
                 os.mkdir(extract_dir_path)
-                bandizip_unzip(src_path=src,dst_path=f"{extract_dir_path}/")
+                if not bandizip_unzip(src_path=src,dst_path=f"{extract_dir_path}\\"):
+                    FileNotFoundError("압축해제 에러 발생")
+                    return
                 recursive_run(extract_dir_path)
-                bandizip_zip(src_path=root, dst_file_path=src)
-
-
-def bandizip_zip(src_path, dst_file_path):
-    try:
-        subprocess.run(f"Bandizip c -y {dst_file_path} {src_path}\\", shell=True, check=True)
-        return True
-    except Exception as e:
-        print(e, src_path, dst_file_path)
-        return False
-
-
-def bandizip_unzip(src_path, dst_path):
-    try:
-        subprocess.run(f"Bandizip bx -y -o:{dst_path} {src_path}", shell=True, check=True)
-        return True
-    except Exception as e:
-        print(e, src_path, dst_path)
-        return False
+                if not bandizip_zip(src_path=extract_dir_path, dst_file_path=src):
+                    FileNotFoundError("압축하기 에러 발생")
+                    shutil.rmtree(extract_dir_path, onexc=remove_readonly)
+                    return
 
 
 def check_compatible_filename(filename):
@@ -76,16 +68,22 @@ def check_compatible_filename(filename):
 
 def fix_compatible_filename(filename):
     # 윈도우에서 불가능한 문자 제거 및 치환
-    filename = re.sub(r'[<>:"/|?*]', '_', filename)
+    filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
+    # 응용프로그램 불가능한 문자 제거 및 치환
+    filename = re.sub(r'[@#%]', '_', filename)
     # 제어 문자 제거
     filename = re.sub(r'[\x00-\x1f\x7f]', '', filename)
     # 리눅스/유닉스에서 불가능한 문자 제거 (경로 구분자 '/')
-    filename = filename.replace('/', '-')
+    filename = filename.replace('/', '_')
 
     # 파일명 길이 제한 (예시: 255자)
     filename = filename[:255]
     return filename
 
+def remove_readonly(func, path, _):
+   "Clear the readonly bit and reattempt the removal"
+   os.chmod(path, stat.S_IWRITE)
+   func(path)
 
 # def check_unicode(string):
 #     try:
@@ -93,7 +91,34 @@ def fix_compatible_filename(filename):
 #     except UnicodeDecodeError:
 #         string.encode('latin1').decode('cp949')
 
+def multiprocess_run():
+    path = "C:\\webudding_test"
+    prod_list = os.listdir(path)
+    prod_path_list = map(lambda x: os.path.join(path, x), prod_list)
+    prod_path_list = list(prod_path_list)
+    
+    with Pool(processes=32) as pool:
+        result = pool.map(recursive_run, prod_path_list)
+        
+def test_run():
+    path = "C:\\webudding_test"
+    prod_list = os.listdir(path)
+    prod_path_list = map(lambda x: os.path.join(path, x), prod_list)
+    prod_path_list = list(prod_path_list)
+    
+    for prod_path in prod_path_list:
+        recursive_run(prod_path)
+        tmp = input()
+        if not tmp == "y":
+            break
+
 
 if __name__ == "__main__":
-    path = "E:\\webudding_test"
-    recursive_run(path)
+    start = datetime.datetime.now()
+    print("시작시간 : ", start)
+    multiprocess_run()
+    end = datetime.datetime.now()
+    print("종료 시간 : ", end)
+    count = end - start
+    print("소요 시간 : ", count)
+
